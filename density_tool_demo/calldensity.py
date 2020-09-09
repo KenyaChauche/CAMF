@@ -5,12 +5,12 @@
 ## from that row and how many there were. It will only
 ## do this for calls that start *after* the call in
 ## that row. It will also do this with specific units,
-## since multiple units can be involved in a call. 
+## since multiple units can be involved in a call.
 
-try: 
+try:
     import pandas as pd
 
-    header_index = 0
+    header_index = 2
 
     # gather inputs from user
     print('We will ask you for three inputs.')
@@ -39,15 +39,14 @@ try:
     # process excel spreadsheet
     print("Working on your document...")
 
-    try: 
+    try:
         df = pd.read_excel(path, header = header_index)
 
         df = df.iloc[0:len(df) - header_index]
 
 
         def overlap_incident_ID(p):
-            return set({df['Incident Number'][i] for i in set(df.index) - {p} if (df['Dispatched Date'][p] <= df['Dispatched Date'][i] <= df['Clear Date'][p])
-                                                                                    and (df['Incident Number'][p] != df['Incident Number'][i])})
+            return set({df['Incident Number'][i] for i in set(df.index) - {p} if ((df['Dispatched Date'][i] <= df['Dispatched Date'][p] <= df['Clear Date'][i]) and (df['Incident Number'][p] != df['Incident Number'][i]))})
 
         ## old version (returns call IDS for any overlap, regardless of chronicity
         # def overlap(p):
@@ -55,27 +54,30 @@ try:
         #                                                                     or (df['Dispatched Date'][p] <= df['Dispatched Date'][i] <= df['Clear Date'][p]))
 
         print("Processing Incidents...")
-        
+
         df['Overlapping Incident Num'] = df.index.map(overlap_incident_ID)
 
         df['Number of Incidents'] = df['Overlapping Incident Num'].map(len)
 
         df['Overlapping Incident Num'] = [None if df['Overlapping Incident Num'][i] == set() else df['Overlapping Incident Num'][i] for i in set(df.index)]
-        
+
 
         def overlap_unit_name(p):
-            return set({df["Apparatus Name"][i] for i in set(df.index) - {p} if (df['Dispatched Date'][p] <= df['Dispatched Date'][i] <= df['Clear Date'][p])
-                                                                                and (df['Incident Number'][p] != df['Incident Number'][i])})
+            return set({df["Apparatus Name"][i] for i in set(df.index) - {p} if ((df['Dispatched Date'][i] <= df['Dispatched Date'][p] <= df['Clear Date'][i]) and (df['Incident Number'][p] != df['Incident Number'][i]))})
 
         print("Processing Units...")
-        
+
         df['Overlapping Apparatus Name'] = df.index.map(overlap_unit_name)
 
         df['Number of Apparatuses'] = df['Overlapping Apparatus Name'].map(len)
 
         df['Overlapping Apparatus Name'] = [None if df['Overlapping Apparatus Name'][i] == set() else df['Overlapping Apparatus Name'][i] for i in set(df.index)]
 
-        
+        df['Overlap Status'] = ['OVERLAP' if (df['Number of Incidents'][i] > 0) else 'NO OVERLAP' for i in set(df.index)]
+
+        df['Apparatus Demanded'] = ['YES' if ((df['Number of Incidents'][i] > 0) and (df['Apparatus Name'][i] in df['Overlapping Apparatus Name'][i])) else 'NO' for i in set(df.index)]
+
+
     except Exception as e:
         print(e)
 
